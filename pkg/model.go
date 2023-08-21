@@ -1,4 +1,4 @@
-package utils
+package goAnsible
 
 import (
 	"os"
@@ -66,10 +66,10 @@ func (p *playbook) ConvertToYamlFile(fileName string) error {
 }
 
 // InitPlaybook initializes a new playbook instance with the specified length of the output buffer.
-func InitPlaybook(LenOfTheOutputBuffer int) playbook {
+func InitPlaybook(lenOfTheOutputBuffer int) playbook {
 	return playbook{
 		Configs:                              make([]interface{}, 0),
-		ExecutionWithInventoryOutputPipeline: make(chan string, LenOfTheOutputBuffer),
+		ExecutionWithInventoryOutputPipeline: make(chan string, lenOfTheOutputBuffer),
 		pipeline:                             make(chan string),
 	}
 }
