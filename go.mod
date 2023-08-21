@@ -1,4 +1,4 @@
-module goAnsible
+module github.com/mohaskii/goAnsible
 
 go 1.20
 
