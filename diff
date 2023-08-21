@@ -1,0 +1,185 @@
+diff --git a/go.mod b/go.mod
+new file mode 100644
+index 0000000..8dfb513
+--- /dev/null
++++ b/go.mod
+@@ -0,0 +1,8 @@
++module goAnsible
++
++go 1.20
++
++require (
++	github.com/google/uuid v1.3.0 // indirect
++	gopkg.in/yaml.v3 v3.0.1 // indirect
++)
+diff --git a/go.sum b/go.sum
+new file mode 100644
+index 0000000..9d86d9a
+--- /dev/null
++++ b/go.sum
+@@ -0,0 +1,5 @@
++github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
++github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
++gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
++gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
++gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+diff --git a/main.go b/main.go
+new file mode 100644
+index 0000000..b65dc2b
+--- /dev/null
++++ b/main.go
+@@ -0,0 +1,19 @@
++package main
++
++import (
++	"fmt"
++	"goAnsible/pkg/utils"
++)
++
++func main() {
++	theP := utils.Playbook{}
++	myPlayBook := utils.ConFig{}
++	myPlayBook.Name = "lolo"
++	myPlayBook.Hosts = "all"
++	myPlayBook.RemoteUser = "bocal"
++	theP.TheConfigs = append(theP.TheConfigs, myPlayBook)
++	err := theP.ExecuteWithInventory("all")
++	if err != nil {
++		fmt.Println(err, "kdkdkdkkdkk")
++	}
++}
+diff --git a/pkg/utils/model.go b/pkg/utils/model.go
+new file mode 100644
+index 0000000..a69d011
+--- /dev/null
++++ b/pkg/utils/model.go
+@@ -0,0 +1,65 @@
++package utils
++
++import (
++	"os"
++	"os/exec"
++
++	"gopkg.in/yaml.v3"
++)
++
++// Playbook represents an Ansible playbook.
++type Playbook struct {
++	TheConfigs []ConFig
++}
++
++// ConFig represents a configuration within an Ansible playbook.
++type ConFig struct {
++	Name       string        `yaml:"name"`
++	Hosts      string        `yaml:"hosts"`
++	RemoteUser string        `yaml:"remote_user"`
++	Tasks      []interface{} `yaml:"tasks"`
++}
++
++// ExecuteWithInventory executes the playbook with the specified inventory file and optional flags.
++func (p *Playbook) ExecuteWithInventory(inventoryName string, flags ...string) (err error) {
++	// Create the YAML file of the playbook.
++	tempFile, err := GenerateRandomString(5)
++	if err != nil {
++		return err
++	}
++	tempFile = "." + tempFile + ".yml"
++	err = p.ConvertToYamlFile(tempFile)
++	if err != nil {
++		return err
++	}
++	//*****************************************
++	cmd := exec.Command("ansible-playbook", "-i", inventoryName, tempFile)
++	cmd.Args = append(cmd.Args, flags...)
++	stdout, err := cmd.StdoutPipe()
++	if err != nil {
++		return err
++	}
++	go PrintOutputs()
++	go GetTheOutput(stdout)
++	if err = cmd.Start(); err != nil {
++		return err
++	}
++	cmd.Wait()
++	os.Remove(tempFile)
++	return nil
++}
++
++// ConvertToYamlFile converts the playbook configuration to a YAML file with the specified name.
++func (p *Playbook) ConvertToYamlFile(fileName string) error {
++
++	out, err := yaml.Marshal(p.TheConfigs)
++	if err != nil {
++		return err
++	}
++	err = os.WriteFile(fileName, out, os.FileMode(0644))
++	if err != nil {
++		return err
++	}
++
++	return nil
++}
+\ No newline at end of file
+diff --git a/pkg/utils/tools.go b/pkg/utils/tools.go
+new file mode 100644
+index 0000000..8c62fce
+--- /dev/null
++++ b/pkg/utils/tools.go
+@@ -0,0 +1,56 @@
++package utils
++
++import (
++	"bufio"
++	"fmt"
++	"io"
++	"os"
++
++	"github.com/google/uuid"
++)
++
++// Set the SSH environment variable to "~/.ssh/"
++var _ = os.Setenv("SSH", "~/.ssh/")
++
++var (
++	// This channel receives the output of the `ExecuteWithInventory` method of the `Playbook` object line by line.
++	// If you want to analyze or interpret the output, you can listen to it after executing this method `ExecuteWithInventory`.
++	ExecutionWithInventoryOutputPipeline = make(chan string, 1000)
++
++	// This channel is used internally.
++	pipeline = make(chan string)
++)
++
++// GenerateRandomString generates a random string of the specified length.
++func GenerateRandomString(length int) (string, error) {
++	// Generate a UUID (Universally Unique Identifier) and convert it to a string.
++	uuidObj, err := uuid.NewRandom()
++	if err != nil {
++		return "", err
++	}
++	randomString := uuidObj.String()
++	// Truncate the string to the desired length.
++	if len(randomString) > length {
++		randomString = randomString[:length]
++	}
++
++	return randomString, nil
++}
++
++// GetTheOutput function will retrieve each line of the output and provide it to the output pipeline.
++func GetTheOutput(Stdout io.ReadCloser) {
++	scanner := bufio.NewScanner(Stdout)
++	for scanner.Scan() {
++		pipeline <- scanner.Text()
++		ExecutionWithInventoryOutputPipeline <- scanner.Text()
++	}
++	close(pipeline)
++	close(ExecutionWithInventoryOutputPipeline)
++}
++
++// PrintOutputs function prints the output received from the pipeline.
++func PrintOutputs() {
++	for theOutput := range pipeline {
++		fmt.Println(theOutput)
++	}
++}
+\ No newline at end of file

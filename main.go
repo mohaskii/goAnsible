@@ -6,14 +6,17 @@ import (
 )
 
 func main() {
-	theP := utils.Playbook{}
-	myPlayBook := utils.ConFig{}
-	myPlayBook.Name = "lolo"
-	myPlayBook.Hosts = "all"
-	myPlayBook.RemoteUser = "bocal"
-	theP.TheConfigs = append(theP.TheConfigs, myPlayBook)
-	err := theP.ExecuteWithInventory("all")
+	P := utils.InitPlaybook(1000)
+	var myFirtConfig = make(map[string]interface{})
+	myFirtConfig["name"] = "lolo"
+	myFirtConfig["hosts"] = "all"
+	myFirtConfig["remote_user"] = "bocal"
+	P.Configs = append(P.Configs, myFirtConfig)
+	P.HideOutput = true
+	err := P.ExecuteWithInventory("all")
 	if err != nil {
-		fmt.Println(err, "kdkdkdkkdkk")
+		fmt.Println(err)
 	}
+	// P.ConvertToYamlFile("lolo")
+
 }
