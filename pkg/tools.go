@@ -10,7 +10,7 @@ import (
 )
 
 // Set the SSH environment variable to "~/.ssh/"
-var _ = os.Setenv("SSH", "~/.ssh/")
+var _ = os.Setenv("SSH_KNOWN_HOSTS", "~/.ssh/known_hosts")
 
 // GenerateRandomString generates a random string of the specified length.
 func GenerateRandomString(length int) (string, error) {
