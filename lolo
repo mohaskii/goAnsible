@@ -1,3 +1,0 @@
-- hosts: all
-  name: lolo
-  remote_user: bocal
