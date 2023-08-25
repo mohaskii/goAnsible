@@ -4,13 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/google/uuid"
 )
-
-// Set the SSH environment variable to "~/.ssh/"
-var _ = os.Setenv("SSH_KNOWN_HOSTS", "~/.ssh/known_hosts")
 
 // GenerateRandomString generates a random string of the specified length.
 func GenerateRandomString(length int) (string, error) {
@@ -32,8 +28,12 @@ func GenerateRandomString(length int) (string, error) {
 func getTheOutput(Stdout io.ReadCloser, p playbook) {
 	scanner := bufio.NewScanner(Stdout)
 	for scanner.Scan() {
+		
+		if p.HideOutput{
+			p.ExecutionWithInventoryOutputPipeline <- scanner.Text()
+			continue
+		}
 		p.pipeline <- scanner.Text()
-		p.ExecutionWithInventoryOutputPipeline <- scanner.Text()
 	}
 	close(p.pipeline)
 	close(p.ExecutionWithInventoryOutputPipeline)

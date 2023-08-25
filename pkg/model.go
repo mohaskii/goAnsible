@@ -5,6 +5,8 @@ import (
 	"os/exec"
 
 	"gopkg.in/yaml.v3"
+
+	
 )
 
 // Playbook represents an Ansible playbook.
@@ -18,6 +20,8 @@ type playbook struct {
 	pipeline chan string
 	// Set the variable to true if you want to hide the output.
 	HideOutput bool
+
+	lenOfTheOutputBuffer int
 }
 
 // ExecuteWithInventory executes the playbook with the specified inventory file and optional flags.
@@ -47,6 +51,8 @@ func (p *playbook) ExecuteWithInventory(inventoryName string, flags ...string) (
 	}
 	cmd.Wait()
 	os.Remove(tempFile)
+	p.pipeline = make(chan string)
+	p.ExecutionWithInventoryOutputPipeline = make(chan string, p.lenOfTheOutputBuffer)
 	return nil
 }
 
@@ -68,6 +74,7 @@ func (p *playbook) ConvertToYamlFile(fileName string) error {
 // InitPlaybook initializes a new playbook instance with the specified length of the output buffer.
 func InitPlaybook(lenOfTheOutputBuffer int) playbook {
 	return playbook{
+		lenOfTheOutputBuffer:                 lenOfTheOutputBuffer,
 		Configs:                              make([]interface{}, 0),
 		ExecutionWithInventoryOutputPipeline: make(chan string, lenOfTheOutputBuffer),
 		pipeline:                             make(chan string),
